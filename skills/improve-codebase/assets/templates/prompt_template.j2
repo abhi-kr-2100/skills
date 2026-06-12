@@ -1,14 +1,13 @@
 I have selected the file `{{ file_path }}` for improvement.
 
-Please refactor this file to follow the style guidelines defined in:
-{% for guide in style_guide_paths -%}
-- `{{ guide }}`
-{% endfor %}
-If the file already follows these guidelines, or if no improvements are necessary, please leave the file unchanged.
+Please refactor this file to follow the style guideline defined in:
+- `{{ style_guide_path }}`
+
+If the file already follows this guideline, or if no improvements are necessary, please leave the file unchanged.
 
 Perform the following steps:
 1. Read the file `{{ file_path }}`.
-2. Read the style guideline(s) listed above.
-3. Compare the file content with the style guidelines.
+2. Read the style guideline listed above.
+3. Compare the file content with the style guideline.
 4. If there are style violations, refactor the file to correct them.
 5. If there are no violations, state that the file already follows the style guide.

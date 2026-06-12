@@ -34,30 +34,23 @@ def find_python_files(root_dir):
                 python_files.append(os.path.join(root, file))
     return python_files
 
-def find_style_guides(root_dir, language="python"):
-    # Search for coding-guidelines/{language} directory
-    guidelines_dir = None
-    for root, dirs, _ in os.walk(root_dir):
-        # Filter out excluded directories to speed up search
-        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
-
-        target_path = os.path.join(root, "coding-guidelines", language)
-        if os.path.isdir(target_path):
-            guidelines_dir = target_path
-            break
-
-    if guidelines_dir:
-        guides = [str(p.relative_to(Path.cwd())) for p in Path(guidelines_dir).glob("*") if p.is_file()]
-        if guides:
-            return guides
-
-    # Fallback to internal guide
+def get_guideline_pool(language="python"):
     script_dir = Path(__file__).parent.absolute()
-    fallback_guide = script_dir.parent / "assets" / "guides" / language / "pep8.md"
-    if fallback_guide.exists():
-        return [str(fallback_guide.relative_to(Path.cwd()))]
+    assets_dir = script_dir.parent / "assets"
 
-    return []
+    pool = []
+
+    # Language agnostic (common) guidelines
+    common_dir = assets_dir / "guides" / "common"
+    if common_dir.exists():
+        pool.extend([str(p.relative_to(Path.cwd())) for p in common_dir.glob("*.md") if p.is_file()])
+
+    # Language specific guidelines
+    lang_dir = assets_dir / "guides" / language
+    if lang_dir.exists():
+        pool.extend([str(p.relative_to(Path.cwd())) for p in lang_dir.glob("*.md") if p.is_file()])
+
+    return pool
 
 def main():
     root_dir = os.getcwd()
@@ -72,12 +65,13 @@ def main():
     selected_file = random.choice(python_files)
     rel_selected_file = os.path.relpath(selected_file, root_dir)
 
-    # 3. Find style guides
-    style_guides = find_style_guides(root_dir)
-
-    if not style_guides:
-        print("No style guides found (including fallback).")
+    # 3. Get guideline pool and select a random one
+    guideline_pool = get_guideline_pool(language="python")
+    if not guideline_pool:
+        print("No style guides found in the skill assets.")
         sys.exit(1)
+
+    selected_guideline = random.choice(guideline_pool)
 
     # 4. Render the prompt template
     script_dir = Path(__file__).parent.absolute()
@@ -92,13 +86,13 @@ def main():
 
     prompt = template.render(
         file_path=rel_selected_file,
-        style_guide_paths=style_guides
+        style_guide_path=selected_guideline
     )
 
     # 5. Output diagnostics and prompt
     print(f"--- DIAGNOSTICS ---")
     print(f"Selected file: {rel_selected_file}")
-    print(f"Style guide(s) used: {', '.join(style_guides)}")
+    print(f"Selected style guide: {selected_guideline}")
     print(f"-------------------\n")
     print(prompt)
 

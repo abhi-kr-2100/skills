@@ -1,17 +1,17 @@
 ---
 name: improve-codebase
-description: Randomly selects a Python file and provides a prompt to refactor it according to project or PEP 8 style guidelines. Use this skill when you want to proactively improve code quality and consistency in the codebase.
+description: Randomly selects a Python file and a single coding guideline (from a pool of language-agnostic and Python-specific rules) and provides a prompt to refactor the file accordingly. Use this skill for incremental codebase improvements.
 compatibility: Requires Python and uv
 ---
 
 # Improve Codebase Skill
 
-This skill helps you proactively improve the codebase by selecting a random file and providing a structured prompt to refactor it according to style guidelines.
+This skill helps you proactively improve the codebase by selecting a random file and a single specific guideline to apply. This focused approach allows for incremental and precise improvements.
 
 ## Workflow
 
 1.  **Run the improvement script:**
-    Use `uv run` to execute the selection script. This script will randomly select a Python file, locate the relevant style guidelines, and generate a prompt for you to follow.
+    Use `uv run` to execute the selection script. This script will randomly select a Python file and a single style guideline from its internal pool, then generate a prompt for you to follow.
 
     ```bash
     uv run skills/improve-codebase/scripts/improve_codebase.py
@@ -21,13 +21,13 @@ This skill helps you proactively improve the codebase by selecting a random file
     The script outputs a "DIAGNOSTICS" section followed by a prompt. You should follow the instructions in the generated prompt exactly.
 
 3.  **Refactor or leave unchanged:**
-    If the selected file violates the style guidelines, apply the necessary changes. If the file already adheres to the guidelines, state that no changes are needed.
+    Compare the selected file against the specific guideline provided. If the file violates the guideline, refactor it. If it already adheres to it, state that no changes are needed.
 
-## Style Guide Discovery
+## Guideline Pool
 
-The skill follows this priority for finding style guidelines:
-1.  Searches for a `coding-guidelines/python/` directory anywhere in the project and uses all files within it.
-2.  If not found, it falls back to an internal PEP 8 summary located at `skills/improve-codebase/assets/guides/python/pep8.md`.
+The skill selects one random guideline from a combined pool of:
+- **Common Guidelines:** Language-agnostic principles like DRY, meaningful naming, and comment quality.
+- **Python Guidelines:** Python-specific style rules (PEP 8).
 
 ## Scripts
 
