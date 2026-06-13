@@ -1,6 +1,7 @@
 # /// script
 # dependencies = [
 #   "jinja2",
+#   "pathspec",
 # ]
 # ///
 
@@ -9,6 +10,7 @@ import random
 import sys
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
+import pathspec
 
 EXCLUDED_DIRS = {
     ".git",
@@ -23,15 +25,47 @@ EXCLUDED_DIRS = {
     "build",
 }
 
-def find_python_files(root_dir):
+def get_gitignore_spec(root_dir):
+    """Collects all .gitignore patterns from root_dir and subdirectories."""
+    patterns = []
+    for root, dirs, files in os.walk(root_dir):
+        if ".gitignore" in files:
+            gitignore_path = os.path.join(root, ".gitignore")
+            with open(gitignore_path, "r") as f:
+                # Add patterns, adjusting for the subdirectory they are in
+                rel_root = os.path.relpath(root, root_dir)
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        if rel_root == ".":
+                            patterns.append(line)
+                        else:
+                            patterns.append(os.path.join(rel_root, line))
+
+    return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+
+def find_python_files(root_dir, gitignore_spec=None):
     python_files = []
     for root, dirs, files in os.walk(root_dir):
-        # Filter out excluded directories
+        # Filter out hardcoded excluded directories
         dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
 
-        for file in files:
-            if file.endswith(".py"):
-                python_files.append(os.path.join(root, file))
+        # Filter out files and directories based on .gitignore
+        if gitignore_spec:
+            rel_root = os.path.relpath(root, root_dir)
+
+            # Prune directories based on .gitignore
+            dirs[:] = [d for d in dirs if not gitignore_spec.match_file(os.path.join(rel_root, d))]
+
+            for file in files:
+                rel_path = os.path.join(rel_root, file)
+                if file.endswith(".py") and not gitignore_spec.match_file(rel_path):
+                    python_files.append(os.path.join(root, file))
+        else:
+            for file in files:
+                if file.endswith(".py"):
+                    python_files.append(os.path.join(root, file))
+
     return python_files
 
 def get_guideline_pool(language="python"):
@@ -55,8 +89,11 @@ def get_guideline_pool(language="python"):
 def main():
     root_dir = os.getcwd()
 
+    # 0. Get gitignore patterns
+    gitignore_spec = get_gitignore_spec(root_dir)
+
     # 1. Find all Python files
-    python_files = find_python_files(root_dir)
+    python_files = find_python_files(root_dir, gitignore_spec)
     if not python_files:
         print("No Python files found in the project.")
         sys.exit(1)
