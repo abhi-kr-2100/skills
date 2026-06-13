@@ -25,41 +25,47 @@ EXCLUDED_DIRS = {
     "build",
 }
 
-def get_gitignore_spec(root_dir):
-    """Collects all .gitignore patterns from root_dir and subdirectories."""
+def get_ignore_spec(root_dir, ignore_filenames=(".gitignore", ".improveignore")):
+    """Collects patterns from specified ignore files throughout the project."""
     patterns = []
     for root, dirs, files in os.walk(root_dir):
-        if ".gitignore" in files:
-            gitignore_path = os.path.join(root, ".gitignore")
-            with open(gitignore_path, "r") as f:
-                # Add patterns, adjusting for the subdirectory they are in
-                rel_root = os.path.relpath(root, root_dir)
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        if rel_root == ".":
-                            patterns.append(line)
-                        else:
-                            patterns.append(os.path.join(rel_root, line))
+        # Prune excluded dirs during walk for efficiency
+        dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
+
+        for ignore_file in ignore_filenames:
+            if ignore_file in files:
+                ignore_path = os.path.join(root, ignore_file)
+                try:
+                    with open(ignore_path, "r") as f:
+                        rel_root = os.path.relpath(root, root_dir)
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith("#"):
+                                if rel_root == ".":
+                                    patterns.append(line)
+                                else:
+                                    patterns.append(os.path.join(rel_root, line))
+                except Exception as e:
+                    print(f"Warning: Could not read {ignore_path}: {e}", file=sys.stderr)
 
     return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
-def find_python_files(root_dir, gitignore_spec=None):
+def find_python_files(root_dir, ignore_spec=None):
     python_files = []
     for root, dirs, files in os.walk(root_dir):
         # Filter out hardcoded excluded directories
         dirs[:] = [d for d in dirs if d not in EXCLUDED_DIRS]
 
-        # Filter out files and directories based on .gitignore
-        if gitignore_spec:
-            rel_root = os.path.relpath(root, root_dir)
+        rel_root = os.path.relpath(root, root_dir)
 
-            # Prune directories based on .gitignore
-            dirs[:] = [d for d in dirs if not gitignore_spec.match_file(os.path.join(rel_root, d))]
+        # Filter out files and directories based on ignore_spec
+        if ignore_spec:
+            # Prune directories based on ignore rules
+            dirs[:] = [d for d in dirs if not ignore_spec.match_file(os.path.join(rel_root, d))]
 
             for file in files:
                 rel_path = os.path.join(rel_root, file)
-                if file.endswith(".py") and not gitignore_spec.match_file(rel_path):
+                if file.endswith(".py") and not ignore_spec.match_file(rel_path):
                     python_files.append(os.path.join(root, file))
         else:
             for file in files:
@@ -89,11 +95,11 @@ def get_guideline_pool(language="python"):
 def main():
     root_dir = os.getcwd()
 
-    # 0. Get gitignore patterns
-    gitignore_spec = get_gitignore_spec(root_dir)
+    # 0. Get ignore patterns
+    ignore_spec = get_ignore_spec(root_dir)
 
     # 1. Find all Python files
-    python_files = find_python_files(root_dir, gitignore_spec)
+    python_files = find_python_files(root_dir, ignore_spec)
     if not python_files:
         print("No Python files found in the project.")
         sys.exit(1)
